@@ -1,0 +1,15 @@
+Windows Registry Editor Version 5.00
+
+; Removes the Windows built-in clamp on SetDeviceGammaRamp, which otherwise
+; silently rejects any gamma ramp that deviates more than about half-scale
+; from linear. Without this, Starlight Filter cannot shift the display
+; cooler than roughly 3700 K (Gacrux) — anything below (Proxima, Betelgeuse-
+; like temperatures) is silently ignored by the display driver.
+;
+; f.lux, Redshift, and Iris all hit this same limit; this key is their
+; standard workaround. Requires a sign-out / sign-in (or reboot) to apply.
+;
+; To revert: delete the GdiIcmGammaRange value under the ICM key.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ICM]
+"GdiIcmGammaRange"=dword:00000100

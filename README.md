@@ -55,6 +55,20 @@ Tests cover the pure-math module (`spectrum.py`) and run on any OS. The Win32 ga
 
 When gamma-ramp control isn't available, the app shows a dialog and disables the controls rather than pretending to work.
 
+## The Windows blue-channel clamp
+
+Since Windows 7, `SetDeviceGammaRamp` silently discards any ramp that deviates more than about half-scale from linear. In practice this means anything cooler than roughly **3700 K** (about the temperature of Gacrux) has no effect: Proxima Centauri, Betelgeuse-style reds, and the low end of the temperature slider will look the same as Gacrux until the clamp is removed.
+
+f.lux, Redshift, and Iris all hit the same wall. The documented unlock is a registry value: `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ICM\GdiIcmGammaRange = 256` (DWORD). This repo ships that as a ready-to-apply file:
+
+```
+assets/enable-full-gamma-range.reg
+```
+
+Double-click it, approve the UAC prompt, then **sign out and back in** (or reboot). After that, the full 1000 K – 40000 K slider range works.
+
+To revert, delete `GdiIcmGammaRange` under that ICM key.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
