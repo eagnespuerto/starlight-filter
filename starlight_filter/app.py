@@ -9,9 +9,21 @@ import atexit
 import signal
 import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import messagebox, ttk
 
 from starlight_filter import gamma, spectrum
+
+APP_ID = "eagnespuerto.StarlightFilter"
+
+
+def _icon_path() -> Path | None:
+    """Locate icon.ico both in dev and inside a PyInstaller bundle."""
+    if hasattr(sys, "_MEIPASS"):
+        candidate = Path(sys._MEIPASS) / "assets" / "icon.ico"
+    else:
+        candidate = Path(__file__).resolve().parent.parent / "assets" / "icon.ico"
+    return candidate if candidate.exists() else None
 from starlight_filter.spectrum import (
     MAX_KELVIN,
     MIN_KELVIN,
@@ -28,6 +40,13 @@ class StarlightFilterApp:
         self.root = root
         self.root.title("Starlight Filter")
         self.root.resizable(False, False)
+
+        icon = _icon_path()
+        if icon is not None:
+            try:
+                self.root.iconbitmap(default=str(icon))
+            except tk.TclError:
+                pass
 
         self._pending_apply: str | None = None
         self._selected_preset: Preset | None = None
@@ -256,6 +275,7 @@ class StarlightFilterApp:
 
 
 def main() -> None:
+    gamma.set_app_user_model_id(APP_ID)
     gamma.capture_original()
     root = tk.Tk()
     try:

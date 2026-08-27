@@ -20,6 +20,14 @@ if sys.platform == "win32":
 
     _gdi32 = ctypes.windll.gdi32
     _user32 = ctypes.windll.user32
+    _shell32 = ctypes.windll.shell32
+
+    def set_app_user_model_id(app_id: str) -> None:
+        """Tell Windows this process is its own app so the taskbar picks up our icon."""
+        try:
+            _shell32.SetCurrentProcessExplicitAppUserModelID(ctypes.c_wchar_p(app_id))
+        except (AttributeError, OSError):
+            pass
 
     _GetDC = _user32.GetDC
     _GetDC.restype = wintypes.HDC
@@ -103,6 +111,9 @@ else:
         return False
 
     def restore() -> None:  # pragma: no cover
+        return
+
+    def set_app_user_model_id(app_id: str) -> None:  # pragma: no cover
         return
 
 

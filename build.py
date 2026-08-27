@@ -8,6 +8,7 @@ Writes ``dist/StarlightFilter.exe``.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -46,6 +47,8 @@ def build() -> Path:
     ]
     if ICON.exists():
         cmd += ["--icon", str(ICON)]
+        # Bundle the icon so the running app can call iconbitmap() on it.
+        cmd += ["--add-data", f"{ICON}{os.pathsep}assets"]
     else:
         print(f"(no icon at {ICON}; building without one)")
     cmd += [str(ROOT / "run.py")]
