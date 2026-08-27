@@ -1,0 +1,18 @@
+[project]
+name = "starlight-filter"
+version = "0.1.0"
+description = "Windows applet that shifts the display white point to match a chosen star."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "eagnespuerto" }]
+
+[project.scripts]
+starlight-filter = "starlight_filter.app:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["starlight_filter*"]
