@@ -1,0 +1,14 @@
+Windows Registry Editor Version 5.00
+
+; Reverts enable-full-gamma-range.reg — deletes the GdiIcmGammaRange value
+; and restores Windows' default clamp on SetDeviceGammaRamp. After this,
+; Starlight Filter's slider will again stop having a visible effect below
+; roughly 3700 K (Gacrux).
+;
+; Requires a sign-out / sign-in (or reboot) to apply.
+;
+; The leading "-" before the value name is registry-file syntax for
+; "delete this value" (the ICM key itself is left intact).
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ICM]
+"GdiIcmGammaRange"=-

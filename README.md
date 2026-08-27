@@ -67,7 +67,13 @@ assets/enable-full-gamma-range.reg
 
 Double-click it, approve the UAC prompt, then **sign out and back in** (or reboot). After that, the full 1000 K – 40000 K slider range works.
 
-To revert, delete `GdiIcmGammaRange` under that ICM key.
+To revert, double-click the companion file:
+
+```
+assets/restore-default-gamma-range.reg
+```
+
+Same UAC prompt, same sign-out / sign-in. It just deletes the `GdiIcmGammaRange` value and leaves the ICM key intact.
 
 ## License
 
