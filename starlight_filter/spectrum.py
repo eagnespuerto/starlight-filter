@@ -41,6 +41,29 @@ PRESETS: list[Preset] = [
 ]
 
 
+# Extra famous stars for the "More named stars" dropdown. Kept separate from
+# PRESETS so the 2x7 button grid stays a clean spectral-class matrix. Sorted
+# hot -> cool so the dropdown mirrors the temperature slider.
+NAMED_STARS: list[Preset] = [
+    Preset("B", "III", "Spica",             "", 25300, "α Virginis Aa, B1 III-IV."),
+    Preset("B", "V",   "Regulus",           "", 12460, "α Leonis A, B8 IVn."),
+    Preset("B", "I",   "Rigel",             "", 12100, "β Orionis Aa, B8 Ia supergiant."),
+    Preset("A", "V",   "Sirius A",          "",  9940, "α Canis Majoris A, A1 V — brightest night-sky star."),
+    Preset("A", "V",   "Fomalhaut",         "",  8590, "α Piscis Austrini A, A3 V."),
+    Preset("A", "I",   "Deneb",             "",  8525, "α Cygni, A2 Ia supergiant."),
+    Preset("A", "V",   "Altair",            "",  7550, "α Aquilae, A7 V."),
+    Preset("A", "II",  "Canopus",           "",  7350, "α Carinae, A9 II bright giant."),
+    Preset("F", "I",   "Polaris",           "",  6015, "α Ursae Minoris Aa, F7 Ib supergiant — the North Star."),
+    Preset("G", "V",   "Alpha Centauri A",  "",  5790, "α Centauri A, G2 V — Sun's near-twin."),
+    Preset("K", "III", "Pollux",            "",  4666, "β Geminorum, K0 III."),
+    Preset("K", "III", "Aldebaran",         "",  3910, "α Tauri, K5 III."),
+    Preset("M", "I",   "Antares",           "",  3660, "α Scorpii A, M1.5 Iab supergiant."),
+    Preset("M", "I",   "Betelgeuse",        "",  3600, "α Orionis, M1-2 Ia-Iab supergiant."),
+    Preset("M", "V",   "Barnard's Star",    "",  3134, "M4 V — highest known proper motion."),
+    Preset("M", "V",   "Trappist-1",        "",  2566, "M8 V ultracool dwarf; hosts 7 known planets."),
+]
+
+
 def _kelvin_to_rgb_255(kelvin: float) -> tuple[float, float, float]:
     """Tanner Helland's blackbody approximation. Returns each channel in [0, 255]."""
     kelvin = max(MIN_KELVIN, min(MAX_KELVIN, kelvin))

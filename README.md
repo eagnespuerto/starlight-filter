@@ -16,6 +16,8 @@ Fourteen stars, one dwarf (V) and one giant (III) per spectral class O · B · A
 | K     | Epsilon Eridani   | 5,080    | Arcturus                 | 4,290    |
 | M     | Proxima Centauri  | 3,040    | Gacrux                   | 3,690    |
 
+A separate **More named stars** dropdown holds 16 additional famous stars sorted hot-to-cool — Spica, Regulus, Rigel, Sirius A, Fomalhaut, Deneb, Altair, Canopus, Polaris, Alpha Centauri A, Pollux, Aldebaran, Antares, Betelgeuse, Barnard's Star, and Trappist-1.
+
 ## Run from source
 
 ```bash

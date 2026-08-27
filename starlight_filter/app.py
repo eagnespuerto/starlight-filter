@@ -27,6 +27,7 @@ def _icon_path() -> Path | None:
 from starlight_filter.spectrum import (
     MAX_KELVIN,
     MIN_KELVIN,
+    NAMED_STARS,
     PRESETS,
     Preset,
 )
@@ -97,9 +98,29 @@ class StarlightFilterApp:
                 self._add_tooltip(btn, f"{preset.name}\n{preset.class_letter}{preset.luminosity} · {preset.teff_k} K")
                 self._preset_buttons[(letter, lum)] = btn
 
+        # Named-star dropdown (16 famous stars beyond the class-matrix grid).
+        named_frame = ttk.LabelFrame(outer, text="More named stars")
+        named_frame.grid(row=1, column=0, sticky="ew", **pad)
+        named_frame.columnconfigure(0, weight=1)
+
+        self._named_options = [
+            f"{s.name} — {s.class_letter}{s.luminosity} · {s.teff_k} K"
+            for s in NAMED_STARS
+        ]
+        self._named_var = tk.StringVar(value="")
+        self._named_combo = ttk.Combobox(
+            named_frame,
+            textvariable=self._named_var,
+            values=self._named_options,
+            state="readonly",
+            width=44,
+        )
+        self._named_combo.grid(row=0, column=0, padx=8, pady=6, sticky="ew")
+        self._named_combo.bind("<<ComboboxSelected>>", self._on_named_selected)
+
         # Temperature slider.
         temp_frame = ttk.Frame(outer)
-        temp_frame.grid(row=1, column=0, sticky="ew", **pad)
+        temp_frame.grid(row=2, column=0, sticky="ew", **pad)
         temp_frame.columnconfigure(0, weight=1)
 
         header = ttk.Frame(temp_frame)
@@ -127,7 +148,7 @@ class StarlightFilterApp:
 
         # Blue-light slider.
         blue_frame = ttk.Frame(outer)
-        blue_frame.grid(row=2, column=0, sticky="ew", **pad)
+        blue_frame.grid(row=3, column=0, sticky="ew", **pad)
         blue_frame.columnconfigure(0, weight=1)
 
         b_header = ttk.Frame(blue_frame)
@@ -155,7 +176,7 @@ class StarlightFilterApp:
 
         # Action buttons.
         actions = ttk.Frame(outer)
-        actions.grid(row=3, column=0, sticky="e", **pad)
+        actions.grid(row=4, column=0, sticky="e", **pad)
         self._reset_btn = ttk.Button(actions, text="Reset", command=self._on_reset)
         self._reset_btn.grid(row=0, column=0, padx=(0, 6))
         self._apply_btn = ttk.Button(actions, text="Apply", command=self._apply_now)
@@ -163,7 +184,13 @@ class StarlightFilterApp:
 
         self._all_controls = (
             list(self._preset_buttons.values())
-            + [self._temp_scale, self._blue_scale, self._reset_btn, self._apply_btn]
+            + [
+                self._named_combo,
+                self._temp_scale,
+                self._blue_scale,
+                self._reset_btn,
+                self._apply_btn,
+            ]
         )
 
     # --- Events -----------------------------------------------------------
@@ -171,7 +198,15 @@ class StarlightFilterApp:
     def _on_temp_change(self, _value: str) -> None:
         self._temp_value_label.config(text=f"{int(self._temp_var.get())} K")
         self._selected_preset = None
+        self._named_var.set("")
         self._schedule_apply()
+
+    def _on_named_selected(self, _event=None) -> None:
+        idx = self._named_combo.current()
+        if idx < 0:
+            return
+        star = NAMED_STARS[idx]
+        self._select_preset(star)
 
     def _on_blue_change(self, _value: str) -> None:
         self._blue_value_label.config(text=f"{int(self._blue_var.get())} %")
@@ -189,6 +224,13 @@ class StarlightFilterApp:
         self._selected_preset = preset
         self._temp_var.set(preset.teff_k)
         self._temp_value_label.config(text=f"{preset.teff_k} K")
+        # Keep the dropdown in sync: show the star's label if it's a named
+        # star, clear it if the click came from the class-matrix grid.
+        try:
+            idx = NAMED_STARS.index(preset)
+            self._named_var.set(self._named_options[idx])
+        except ValueError:
+            self._named_var.set("")
         self._apply_now()
 
     def _schedule_apply(self) -> None:

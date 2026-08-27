@@ -9,6 +9,7 @@ import pytest
 from starlight_filter.spectrum import (
     MAX_KELVIN,
     MIN_KELVIN,
+    NAMED_STARS,
     PRESETS,
     REFERENCE_KELVIN,
     apply_blue_reduction,
@@ -101,6 +102,35 @@ def test_hot_class_dwarfs_reduce_red(class_letter):
     r, _, _ = rgb_scale_for_temperature(dwarf.teff_k)
     r_ref, _, _ = rgb_scale_for_temperature(REFERENCE_KELVIN)
     assert r < r_ref
+
+
+def test_named_stars_are_well_formed_and_sorted_hot_to_cool():
+    assert len(NAMED_STARS) >= 10
+    seen_names: set[str] = set()
+    prev_teff = None
+    for star in NAMED_STARS:
+        assert star.name and star.name not in seen_names, f"duplicate: {star.name}"
+        seen_names.add(star.name)
+        assert MIN_KELVIN <= star.teff_k <= MAX_KELVIN
+        assert star.class_letter in {"O", "B", "A", "F", "G", "K", "M"}
+        if prev_teff is not None:
+            assert star.teff_k <= prev_teff, f"{star.name} out of hot->cool order"
+        prev_teff = star.teff_k
+
+
+def test_named_stars_do_not_shadow_class_matrix_entries():
+    matrix_names = {p.name for p in PRESETS}
+    for star in NAMED_STARS:
+        assert star.name not in matrix_names, (
+            f"{star.name} already in the class-matrix PRESETS"
+        )
+
+
+def test_every_named_star_produces_valid_rgb():
+    for star in NAMED_STARS:
+        r, g, b = rgb_scale_for_temperature(star.teff_k)
+        assert 0.0 <= r <= 1.0 and 0.0 <= g <= 1.0 and 0.0 <= b <= 1.0
+        assert max(r, g, b) > 0.99
 
 
 @pytest.mark.parametrize("class_letter", ["K", "M"])
