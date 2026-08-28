@@ -6,6 +6,10 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [{ name = "eagnespuerto" }]
+dependencies = [
+    "pystray>=0.19",
+    "Pillow>=10.0",
+]
 
 [project.scripts]
 starlight-filter = "starlight_filter.app:main"

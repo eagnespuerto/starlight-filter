@@ -12,7 +12,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from starlight_filter import gamma, spectrum
+from starlight_filter import autostart, gamma, single_instance, spectrum
 
 APP_ID = "eagnespuerto.StarlightFilter"
 
@@ -51,9 +51,11 @@ class StarlightFilterApp:
 
         self._pending_apply: str | None = None
         self._selected_preset: Preset | None = None
+        self._tray_icon = None  # populated by start_tray() if available
 
         self._build_ui()
         self._wire_shutdown()
+        self._start_tray()
 
         if not gamma.is_supported():
             self._enter_degraded_mode()
@@ -174,9 +176,22 @@ class StarlightFilterApp:
         ttk.Label(b_legend, text="0 %").grid(row=0, column=0, sticky="w")
         ttk.Label(b_legend, text="100 %").grid(row=0, column=1, sticky="e")
 
-        # Action buttons.
-        actions = ttk.Frame(outer)
-        actions.grid(row=4, column=0, sticky="e", **pad)
+        # Bottom row: autostart checkbox on the left, actions on the right.
+        bottom = ttk.Frame(outer)
+        bottom.grid(row=4, column=0, sticky="ew", **pad)
+        bottom.columnconfigure(0, weight=1)
+
+        self._autostart_var = tk.BooleanVar(value=autostart.is_enabled())
+        self._autostart_check = ttk.Checkbutton(
+            bottom,
+            text="Start with Windows",
+            variable=self._autostart_var,
+            command=self._on_autostart_toggle,
+        )
+        self._autostart_check.grid(row=0, column=0, sticky="w")
+
+        actions = ttk.Frame(bottom)
+        actions.grid(row=0, column=1, sticky="e")
         self._reset_btn = ttk.Button(actions, text="Reset", command=self._on_reset)
         self._reset_btn.grid(row=0, column=0, padx=(0, 6))
         self._apply_btn = ttk.Button(actions, text="Apply", command=self._apply_now)
@@ -190,6 +205,7 @@ class StarlightFilterApp:
                 self._blue_scale,
                 self._reset_btn,
                 self._apply_btn,
+                self._autostart_check,
             ]
         )
 
@@ -248,21 +264,72 @@ class StarlightFilterApp:
         rgb = spectrum.apply_blue_reduction(rgb, blue_amount)
         gamma.apply(rgb)
 
-    # --- Shutdown & degraded mode ----------------------------------------
+    def _on_autostart_toggle(self) -> None:
+        wanted = bool(self._autostart_var.get())
+        ok = autostart.enable() if wanted else autostart.disable()
+        # If the registry write failed, revert the checkbox to what it truly is.
+        actual = autostart.is_enabled()
+        if not ok or actual != wanted:
+            self._autostart_var.set(actual)
+
+    # --- Tray, shutdown, degraded mode -----------------------------------
+
+    def _start_tray(self) -> None:
+        icon = _icon_path()
+        if icon is None:
+            return
+        try:
+            from starlight_filter import tray
+        except ImportError:
+            return  # pystray/Pillow not installed — degrade to old close-quits.
+        self._tray_icon = tray.start_tray(
+            icon_path=icon,
+            schedule=lambda cb: self.root.after(0, cb),
+            on_show=self.show_window,
+            on_reset=self._on_reset,
+            on_toggle_autostart=self._tray_toggle_autostart,
+            autostart_is_enabled=autostart.is_enabled,
+            on_quit=self._quit_app,
+        )
+
+    def _tray_toggle_autostart(self) -> None:
+        # Flip the checkbox variable, then re-use the same handler so the UI
+        # and registry stay in sync.
+        self._autostart_var.set(not autostart.is_enabled())
+        self._on_autostart_toggle()
+
+    def show_window(self) -> None:
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
 
     def _wire_shutdown(self) -> None:
         atexit.register(gamma.restore)
-        self.root.protocol("WM_DELETE_WINDOW", self._shutdown)
+        # Closing the window hides to tray instead of quitting.
+        self.root.protocol("WM_DELETE_WINDOW", self._hide_to_tray)
         try:
-            signal.signal(signal.SIGINT, lambda *_: self._shutdown())
+            signal.signal(signal.SIGINT, lambda *_: self._quit_app())
         except (ValueError, OSError):
             # SIGINT can't always be set from a non-main thread; harmless.
             pass
 
-    def _shutdown(self) -> None:
+    def _hide_to_tray(self) -> None:
+        # If pystray never came up, closing the window has to actually quit
+        # or the process becomes an invisible zombie.
+        if self._tray_icon is None:
+            self._quit_app()
+            return
+        self.root.withdraw()
+
+    def _quit_app(self) -> None:
         try:
             gamma.restore()
         finally:
+            if self._tray_icon is not None:
+                try:
+                    self._tray_icon.stop()
+                except Exception:
+                    pass
             self.root.destroy()
 
     def _enter_degraded_mode(self) -> None:
@@ -317,11 +384,19 @@ class StarlightFilterApp:
 
 
 def main() -> None:
+    if not single_instance.acquire():
+        # Another copy is already running — leave it alone.
+        return
+
+    start_minimized = "--minimized" in sys.argv[1:]
+
     gamma.set_app_user_model_id(APP_ID)
     gamma.capture_original()
     root = tk.Tk()
     try:
         app = StarlightFilterApp(root)
+        if start_minimized:
+            root.withdraw()
         root.mainloop()
     except Exception:
         gamma.restore()

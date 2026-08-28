@@ -21,10 +21,30 @@ A separate **More named stars** dropdown holds 16 additional famous stars sorted
 ## Run from source
 
 ```bash
+pip install -r requirements.txt   # or: pip install pystray Pillow
 python run.py
 ```
 
-Requires Python 3.10+. No runtime dependencies outside the standard library.
+Requires Python 3.10+ and two runtime deps: `pystray` and `Pillow` (used for the system-tray icon).
+
+Pass `--minimized` to start hidden in the tray:
+
+```bash
+python run.py --minimized
+```
+
+## Living in the tray
+
+Closing the main window hides the app to the Windows system tray; the gamma ramp you picked stays applied. Right-click the tray icon for:
+
+- **Show** — bring the main window back
+- **Reset gamma** — restore your original ramp without quitting
+- **Start with Windows** — writes `HKCU\...\Run\StarlightFilter`, launches the app hidden at sign-in
+- **Quit** — restore the original ramp and exit
+
+Only Quit actually stops the process; the original gamma ramp is also restored on any unexpected exit (Ctrl-C, crash, sign-out).
+
+A single-instance guard means launching a second copy silently exits — click the tray icon of the running one instead.
 
 ## Build a .exe
 

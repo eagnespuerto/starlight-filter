@@ -51,6 +51,14 @@ def build() -> Path:
         cmd += ["--add-data", f"{ICON}{os.pathsep}assets"]
     else:
         print(f"(no icon at {ICON}; building without one)")
+
+    # pystray's Windows backend is loaded dynamically; PyInstaller doesn't
+    # always trace it. Pin it explicitly so the tray icon works in the bundle.
+    cmd += [
+        "--hidden-import", "pystray._win32",
+        "--collect-submodules", "pystray",
+        "--collect-submodules", "PIL",
+    ]
     cmd += [str(ROOT / "run.py")]
 
     print("Running:", " ".join(cmd))
