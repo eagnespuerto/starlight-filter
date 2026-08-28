@@ -16,7 +16,19 @@ Fourteen stars, one dwarf (V) and one giant (III) per spectral class O · B · A
 | K     | Epsilon Eridani   | 5,080    | Arcturus                 | 4,290    |
 | M     | Proxima Centauri  | 3,040    | Gacrux                   | 3,690    |
 
-A separate **More named stars** dropdown holds 16 additional famous stars sorted hot-to-cool — Spica, Regulus, Rigel, Sirius A, Fomalhaut, Deneb, Altair, Canopus, Polaris, Alpha Centauri A, Pollux, Aldebaran, Antares, Betelgeuse, Barnard's Star, and Trappist-1.
+A separate **More named stars** dropdown holds 28 additional stars sorted hot-to-cool, including four exotic spectral classes that fall outside the O–M main-sequence grid:
+
+- **Wolf-Rayet (WR):** WR 22
+- **B–A supergiants and giants:** Spica, Rigel, Deneb, Canopus
+- **White dwarf (D):** Sirius B
+- **Bright main-sequence:** Regulus, Sirius A, Fomalhaut, Altair, Polaris
+- **Sun-like G/K dwarfs:** Alpha Centauri A, Tau Ceti, 40 Eridani A, Toliman (Alpha Centauri B)
+- **K/M giants and supergiants:** Pollux, Aldebaran, Antares, Betelgeuse
+- **Nearby / notable M dwarfs:** TOI 700, GJ 251, Barnard's Star, GJ 725 B, LHS 1140, Teegarden's Star, Trappist-1
+- **L-type brown dwarf:** Luhman 16 A
+- **T-type brown dwarf:** Luhman 16 B
+
+The temperature slider spans 1,000 K – 50,000 K to cover the full range from the coolest brown dwarfs to Wolf-Rayet stars. A short warning line appears under the slider at either extreme — flagging cool values Windows will clamp without the registry unlock, and hot values that produce a hard-to-read blue tint.
 
 ## Run from source
 
@@ -87,7 +99,7 @@ f.lux, Redshift, and Iris all hit the same wall. The documented unlock is a regi
 assets/enable-full-gamma-range.reg
 ```
 
-Double-click it, approve the UAC prompt, then **sign out and back in** (or reboot). After that, the full 1000 K – 40000 K slider range works.
+Double-click it, approve the UAC prompt, then **sign out and back in** (or reboot). After that, the full 1000 K – 50000 K slider range works.
 
 To revert, double-click the companion file:
 

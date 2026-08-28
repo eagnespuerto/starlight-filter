@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 REFERENCE_KELVIN = 6500.0
 MIN_KELVIN = 1000.0
-MAX_KELVIN = 40000.0
+MAX_KELVIN = 50000.0
 
 
 @dataclass(frozen=True)
@@ -43,24 +43,37 @@ PRESETS: list[Preset] = [
 
 # Extra famous stars for the "More named stars" dropdown. Kept separate from
 # PRESETS so the 2x7 button grid stays a clean spectral-class matrix. Sorted
-# hot -> cool so the dropdown mirrors the temperature slider.
+# hot -> cool so the dropdown mirrors the temperature slider. Includes exotic
+# spectral classes (WR, D, L, T) that fall outside the O–M main-sequence grid.
 NAMED_STARS: list[Preset] = [
-    Preset("B", "III", "Spica",             "", 25300, "α Virginis Aa, B1 III-IV."),
-    Preset("B", "V",   "Regulus",           "", 12460, "α Leonis A, B8 IVn."),
-    Preset("B", "I",   "Rigel",             "", 12100, "β Orionis Aa, B8 Ia supergiant."),
-    Preset("A", "V",   "Sirius A",          "",  9940, "α Canis Majoris A, A1 V — brightest night-sky star."),
-    Preset("A", "V",   "Fomalhaut",         "",  8590, "α Piscis Austrini A, A3 V."),
-    Preset("A", "I",   "Deneb",             "",  8525, "α Cygni, A2 Ia supergiant."),
-    Preset("A", "V",   "Altair",            "",  7550, "α Aquilae, A7 V."),
-    Preset("A", "II",  "Canopus",           "",  7350, "α Carinae, A9 II bright giant."),
-    Preset("F", "I",   "Polaris",           "",  6015, "α Ursae Minoris Aa, F7 Ib supergiant — the North Star."),
-    Preset("G", "V",   "Alpha Centauri A",  "",  5790, "α Centauri A, G2 V — Sun's near-twin."),
-    Preset("K", "III", "Pollux",            "",  4666, "β Geminorum, K0 III."),
-    Preset("K", "III", "Aldebaran",         "",  3910, "α Tauri, K5 III."),
-    Preset("M", "I",   "Antares",           "",  3660, "α Scorpii A, M1.5 Iab supergiant."),
-    Preset("M", "I",   "Betelgeuse",        "",  3600, "α Orionis, M1-2 Ia-Iab supergiant."),
-    Preset("M", "V",   "Barnard's Star",    "",  3134, "M4 V — highest known proper motion."),
-    Preset("M", "V",   "Trappist-1",        "",  2566, "M8 V ultracool dwarf; hosts 7 known planets."),
+    Preset("WR", "",   "WR 22",                       "", 44700, "WN7h Wolf-Rayet star in Carina; hydrogen-rich."),
+    Preset("B",  "III","Spica",                       "", 25300, "α Virginis Aa, B1 III-IV."),
+    Preset("D",  "A",  "Sirius B",                    "", 25200, "α Canis Majoris B, DA2 white dwarf."),
+    Preset("B",  "V",  "Regulus",                     "", 12460, "α Leonis A, B8 IVn."),
+    Preset("B",  "I",  "Rigel",                       "", 12100, "β Orionis Aa, B8 Ia supergiant."),
+    Preset("A",  "V",  "Sirius A",                    "",  9940, "α Canis Majoris A, A1 V — brightest night-sky star."),
+    Preset("A",  "V",  "Fomalhaut",                   "",  8590, "α Piscis Austrini A, A3 V."),
+    Preset("A",  "I",  "Deneb",                       "",  8525, "α Cygni, A2 Ia supergiant."),
+    Preset("A",  "V",  "Altair",                      "",  7550, "α Aquilae, A7 V."),
+    Preset("A",  "II", "Canopus",                     "",  7350, "α Carinae, A9 II bright giant."),
+    Preset("F",  "I",  "Polaris",                     "",  6015, "α Ursae Minoris Aa, F7 Ib supergiant — the North Star."),
+    Preset("G",  "V",  "Alpha Centauri A",            "",  5790, "α Centauri A, G2 V — Sun's near-twin."),
+    Preset("G",  "V",  "Tau Ceti",                    "",  5344, "τ Ceti, G8 V — nearby sun-like star."),
+    Preset("K",  "V",  "40 Eridani A",                "",  5300, "40 Eri A, K0.5 V — triple system 16 ly away."),
+    Preset("K",  "V",  "Toliman (Alpha Centauri B)",  "",  5260, "α Centauri B, K1 V — Sun's nearest K dwarf."),
+    Preset("K",  "III","Pollux",                      "",  4666, "β Geminorum, K0 III."),
+    Preset("K",  "III","Aldebaran",                   "",  3910, "α Tauri, K5 III."),
+    Preset("M",  "I",  "Antares",                     "",  3660, "α Scorpii A, M1.5 Iab supergiant."),
+    Preset("M",  "I",  "Betelgeuse",                  "",  3600, "α Orionis, M1-2 Ia-Iab supergiant."),
+    Preset("M",  "V",  "TOI 700",                     "",  3480, "M2 V — hosts multiple habitable-zone planets."),
+    Preset("M",  "V",  "GJ 251",                      "",  3448, "M3 V — hosts a super-Earth candidate."),
+    Preset("M",  "V",  "Barnard's Star",              "",  3134, "M4 V — highest known proper motion."),
+    Preset("M",  "V",  "GJ 725 B",                    "",  3104, "M3.5 V — companion in the 61 Cyg-like pair 12 ly away."),
+    Preset("M",  "V",  "LHS 1140",                    "",  3096, "M4.5 V — hosts a rocky habitable-zone planet."),
+    Preset("M",  "V",  "Teegarden's Star",            "",  2904, "M7.0 V — ultracool dwarf 12.5 ly away."),
+    Preset("M",  "V",  "Trappist-1",                  "",  2566, "M8 V ultracool dwarf; hosts 7 known planets."),
+    Preset("L",  "V",  "Luhman 16 A",                 "",  1310, "L7.5 brown dwarf, closer half of the third-closest system."),
+    Preset("T",  "V",  "Luhman 16 B",                 "",  1210, "T0.5 brown dwarf; L/T transition companion of Luhman 16 A."),
 ]
 
 

@@ -112,7 +112,11 @@ def test_named_stars_are_well_formed_and_sorted_hot_to_cool():
         assert star.name and star.name not in seen_names, f"duplicate: {star.name}"
         seen_names.add(star.name)
         assert MIN_KELVIN <= star.teff_k <= MAX_KELVIN
-        assert star.class_letter in {"O", "B", "A", "F", "G", "K", "M"}
+        # Main-sequence O–M plus exotic classes: WR (Wolf-Rayet), D (white
+        # dwarf), L and T (ultracool / brown dwarfs).
+        assert star.class_letter in {
+            "O", "B", "A", "F", "G", "K", "M", "WR", "D", "L", "T",
+        }
         if prev_teff is not None:
             assert star.teff_k <= prev_teff, f"{star.name} out of hot->cool order"
         prev_teff = star.teff_k

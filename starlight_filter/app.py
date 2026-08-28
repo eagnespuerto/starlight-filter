@@ -153,6 +153,18 @@ class StarlightFilterApp:
         ttk.Label(legend, text=f"{int(MIN_KELVIN)} K").grid(row=0, column=0, sticky="w")
         ttk.Label(legend, text=f"{int(MAX_KELVIN)} K").grid(row=0, column=1, sticky="e")
 
+        # Dynamic warning line for extreme temperatures. Empty in the safe
+        # middle band; fills with a short heads-up at either end.
+        self._temp_warning_var = tk.StringVar(value="")
+        self._temp_warning_label = ttk.Label(
+            temp_frame,
+            textvariable=self._temp_warning_var,
+            foreground="#a15c00",
+            wraplength=360,
+            justify="left",
+        )
+        self._temp_warning_label.grid(row=3, column=0, sticky="ew", pady=(2, 0))
+
         # Blue-light slider.
         blue_frame = ttk.Frame(outer)
         blue_frame.grid(row=3, column=0, sticky="ew", **pad)
@@ -218,9 +230,37 @@ class StarlightFilterApp:
 
     def _on_temp_change(self, _value: str) -> None:
         self._temp_value_label.config(text=f"{int(self._temp_var.get())} K")
+        self._update_temp_warning()
         self._selected_preset = None
         self._named_var.set("")
         self._schedule_apply()
+
+    def _update_temp_warning(self) -> None:
+        # Advisory only — the gamma stack always runs; this just tells the
+        # user why their screen might look flat or unreadable at the extremes.
+        kelvin = self._temp_var.get()
+        if kelvin <= 2000:
+            text = (
+                "Very low: near-infrared. Screen may look near-black; "
+                "Windows will clamp this ramp unless the full-range unlock "
+                "is applied (see README)."
+            )
+        elif kelvin < 3700:
+            text = (
+                "Low: below ~3700 K Windows silently clamps the ramp. "
+                "The tint won't deepen further until the registry unlock "
+                "is applied (see README)."
+            )
+        elif kelvin >= 30000:
+            text = (
+                "Very high: intense blue tint. Whites, warm colors, and "
+                "reds may become hard to read."
+            )
+        elif kelvin >= 20000:
+            text = "High: strong blue tint. Warm colors will look washed out."
+        else:
+            text = ""
+        self._temp_warning_var.set(text)
 
     def _on_named_selected(self, _event=None) -> None:
         idx = self._named_combo.current()
@@ -245,6 +285,7 @@ class StarlightFilterApp:
         self._selected_preset = preset
         self._temp_var.set(preset.teff_k)
         self._temp_value_label.config(text=f"{preset.teff_k} K")
+        self._update_temp_warning()
         # Keep the dropdown in sync: show the star's label if it's a named
         # star, clear it if the click came from the class-matrix grid.
         try:
@@ -288,6 +329,7 @@ class StarlightFilterApp:
         blue_pct = max(0.0, min(100.0, blue_pct))
         self._temp_var.set(temp_k)
         self._temp_value_label.config(text=f"{int(temp_k)} K")
+        self._update_temp_warning()
         self._blue_var.set(blue_pct)
         self._blue_value_label.config(text=f"{int(blue_pct)} %")
         # Match a named-star / preset if the temperature lines up exactly.
