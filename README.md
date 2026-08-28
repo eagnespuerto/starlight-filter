@@ -79,7 +79,7 @@ Tests cover the pure-math module (`spectrum.py`) and run on any OS. The Win32 ga
 ## How it works
 
 - On launch, the app captures the current Windows gamma ramp via `GetDeviceGammaRamp`.
-- Choosing a star or moving the temperature slider computes RGB scale factors from the target color temperature (Tanner Helland's blackbody approximation), normalizes them so the largest channel stays at 1.0 (we never boost, only attenuate), and pushes a new ramp via `SetDeviceGammaRamp`.
+- Choosing a star or moving the temperature slider computes RGB scale factors from the target color temperature by integrating Planck's Law against the CIE 1931 2° standard-observer color matching functions to get CIE XYZ, then converting to sRGB with the standard D65 primaries matrix and the sRGB transfer function. The result is normalized so the largest channel stays at 1.0 (we never boost, only attenuate) and pushed as a new ramp via `SetDeviceGammaRamp`. Every temperature therefore sits on the Planckian locus; at 6500 K the chromaticity is (0.314, 0.324), i.e. daylight D65.
 - On any exit path — closing the window, Ctrl-C, an unhandled exception, or process shutdown — the original ramp is restored.
 
 ## Won't work on

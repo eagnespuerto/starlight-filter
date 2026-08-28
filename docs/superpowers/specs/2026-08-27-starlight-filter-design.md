@@ -41,7 +41,7 @@ The module hides all `ctypes`, `windll`, and HDC handling. Nothing else in the c
 Pure math and preset data. No I/O, no Windows calls — runs on any OS.
 
 Public surface:
-- `rgb_scale_for_temperature(kelvin: float) -> tuple[float, float, float]` — converts a target color temperature (1000–40000 K) into (r, g, b) scale factors relative to a 6500 K reference white, using Tanner Helland's blackbody approximation. Returns each channel in [0, 1].
+- `rgb_scale_for_temperature(kelvin: float) -> tuple[float, float, float]` — converts a target color temperature (1000–40000 K) into (r, g, b) scale factors relative to a 6500 K reference white. Integrates Planck's Law against the CIE 1931 2° standard-observer color matching functions to get CIE XYZ, then transforms to sRGB via the standard D65 matrix and encodes with the sRGB transfer function. Returns each channel in [0, 1].
 - `apply_blue_reduction(rgb: tuple, amount: float) -> tuple` — attenuates the blue channel by `amount` (0.0–1.0) after the temperature transform.
 - `PRESETS: list[Preset]` — the 14-entry star table (see below).
 
