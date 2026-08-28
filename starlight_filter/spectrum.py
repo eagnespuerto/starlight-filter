@@ -119,10 +119,3 @@ def rgb_scale_for_temperature(kelvin: float) -> tuple[float, float, float]:
     return (r / m, g / m, b / m)
 
 
-def apply_blue_reduction(
-    rgb: tuple[float, float, float], amount: float
-) -> tuple[float, float, float]:
-    """Attenuate the blue channel by `amount` in [0.0, 1.0]."""
-    amount = max(0.0, min(1.0, amount))
-    r, g, b = rgb
-    return (r, g, b * (1.0 - amount))

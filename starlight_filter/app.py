@@ -165,34 +165,6 @@ class StarlightFilterApp:
         )
         self._temp_warning_label.grid(row=3, column=0, sticky="ew", pady=(2, 0))
 
-        # Blue-light slider.
-        blue_frame = ttk.Frame(outer)
-        blue_frame.grid(row=3, column=0, sticky="ew", **pad)
-        blue_frame.columnconfigure(0, weight=1)
-
-        b_header = ttk.Frame(blue_frame)
-        b_header.grid(row=0, column=0, sticky="ew")
-        b_header.columnconfigure(0, weight=1)
-        ttk.Label(b_header, text="Blue-light reduction").grid(row=0, column=0, sticky="w")
-        self._blue_value_label = ttk.Label(b_header, text="0 %")
-        self._blue_value_label.grid(row=0, column=1, sticky="e")
-
-        self._blue_var = tk.DoubleVar(value=0.0)
-        self._blue_scale = ttk.Scale(
-            blue_frame,
-            from_=0.0,
-            to=100.0,
-            variable=self._blue_var,
-            command=self._on_blue_change,
-        )
-        self._blue_scale.grid(row=1, column=0, sticky="ew", pady=(2, 0))
-
-        b_legend = ttk.Frame(blue_frame)
-        b_legend.grid(row=2, column=0, sticky="ew")
-        b_legend.columnconfigure(0, weight=1)
-        ttk.Label(b_legend, text="0 %").grid(row=0, column=0, sticky="w")
-        ttk.Label(b_legend, text="100 %").grid(row=0, column=1, sticky="e")
-
         # Bottom row: autostart checkbox on the left, actions on the right.
         bottom = ttk.Frame(outer)
         bottom.grid(row=4, column=0, sticky="ew", **pad)
@@ -219,7 +191,6 @@ class StarlightFilterApp:
             + [
                 self._named_combo,
                 self._temp_scale,
-                self._blue_scale,
                 self._reset_btn,
                 self._apply_btn,
                 self._autostart_check,
@@ -269,16 +240,10 @@ class StarlightFilterApp:
         star = NAMED_STARS[idx]
         self._select_preset(star)
 
-    def _on_blue_change(self, _value: str) -> None:
-        self._blue_value_label.config(text=f"{int(self._blue_var.get())} %")
-        self._schedule_apply()
-
     def _on_reset(self) -> None:
         gamma.restore()
         self._temp_var.set(SUN_TEFF)
         self._temp_value_label.config(text=f"{SUN_TEFF} K")
-        self._blue_var.set(0.0)
-        self._blue_value_label.config(text="0 %")
         self._select_preset(self._find_preset("G", "V"))
 
     def _select_preset(self, preset: Preset) -> None:
@@ -305,17 +270,15 @@ class StarlightFilterApp:
             self.root.after_cancel(self._pending_apply)
             self._pending_apply = None
         kelvin = self._temp_var.get()
-        blue_pct = self._blue_var.get()
         rgb = spectrum.rgb_scale_for_temperature(kelvin)
-        rgb = spectrum.apply_blue_reduction(rgb, blue_pct / 100.0)
         gamma.apply(rgb)
-        self._schedule_save(kelvin, blue_pct)
+        self._schedule_save(kelvin)
 
-    def _schedule_save(self, kelvin: float, blue_pct: float) -> None:
+    def _schedule_save(self, kelvin: float) -> None:
         if self._pending_save is not None:
             self.root.after_cancel(self._pending_save)
         self._pending_save = self.root.after(
-            SAVE_DEBOUNCE_MS, lambda: settings.save(kelvin, blue_pct)
+            SAVE_DEBOUNCE_MS, lambda: settings.save(kelvin)
         )
 
     def _restore_state_or_default_to_sun(self) -> None:
@@ -323,15 +286,12 @@ class StarlightFilterApp:
         if loaded is None:
             self._select_preset(self._find_preset("G", "V"))
             return
-        temp_k, blue_pct = loaded
+        temp_k = loaded
         # Guard against a hand-edited or stale state file.
         temp_k = max(MIN_KELVIN, min(MAX_KELVIN, temp_k))
-        blue_pct = max(0.0, min(100.0, blue_pct))
         self._temp_var.set(temp_k)
         self._temp_value_label.config(text=f"{int(temp_k)} K")
         self._update_temp_warning()
-        self._blue_var.set(blue_pct)
-        self._blue_value_label.config(text=f"{int(blue_pct)} %")
         # Match a named-star / preset if the temperature lines up exactly.
         matched = next(
             (p for p in (*PRESETS, *NAMED_STARS) if p.teff_k == int(temp_k)),
@@ -353,9 +313,7 @@ class StarlightFilterApp:
     def _tick_keep_alive(self) -> None:
         if gamma.is_supported():
             kelvin = self._temp_var.get()
-            blue_pct = self._blue_var.get()
             rgb = spectrum.rgb_scale_for_temperature(kelvin)
-            rgb = spectrum.apply_blue_reduction(rgb, blue_pct / 100.0)
             gamma.apply(rgb)
         self._schedule_keep_alive()
 

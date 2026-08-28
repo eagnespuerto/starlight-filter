@@ -24,16 +24,11 @@ def _config_file() -> Path:
     return _config_dir() / "state.json"
 
 
-def save(temperature_k: float, blue_reduction_pct: float) -> None:
+def save(temperature_k: float) -> None:
     try:
         _config_dir().mkdir(parents=True, exist_ok=True)
         _config_file().write_text(
-            json.dumps(
-                {
-                    "temperature_k": float(temperature_k),
-                    "blue_reduction_pct": float(blue_reduction_pct),
-                }
-            ),
+            json.dumps({"temperature_k": float(temperature_k)}),
             encoding="utf-8",
         )
     except OSError:
@@ -41,9 +36,9 @@ def save(temperature_k: float, blue_reduction_pct: float) -> None:
         pass
 
 
-def load() -> Optional[tuple[float, float]]:
+def load() -> Optional[float]:
     try:
         data = json.loads(_config_file().read_text(encoding="utf-8"))
-        return float(data["temperature_k"]), float(data["blue_reduction_pct"])
+        return float(data["temperature_k"])
     except (OSError, ValueError, KeyError, TypeError):
         return None

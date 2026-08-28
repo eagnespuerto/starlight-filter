@@ -12,7 +12,6 @@ from starlight_filter.spectrum import (
     NAMED_STARS,
     PRESETS,
     REFERENCE_KELVIN,
-    apply_blue_reduction,
     rgb_scale_for_temperature,
 )
 
@@ -46,23 +45,6 @@ def test_hotter_star_has_less_red_than_reference():
     r_hot, _, _ = rgb_scale_for_temperature(20000)
     r_ref, _, _ = rgb_scale_for_temperature(REFERENCE_KELVIN)
     assert r_hot < r_ref
-
-
-def test_blue_reduction_endpoints():
-    rgb = (0.9, 0.8, 0.7)
-    assert apply_blue_reduction(rgb, 0.0) == rgb
-    r, g, b = apply_blue_reduction(rgb, 1.0)
-    assert (r, g) == (0.9, 0.8)
-    assert b == 0.0
-
-
-def test_blue_reduction_is_monotonic():
-    rgb = (1.0, 1.0, 1.0)
-    prev = 1.0
-    for amount in (0.1, 0.25, 0.5, 0.75, 0.9):
-        _, _, b = apply_blue_reduction(rgb, amount)
-        assert b < prev
-        prev = b
 
 
 def test_out_of_range_kelvin_is_clamped_not_crashing():

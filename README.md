@@ -1,6 +1,6 @@
 # Starlight Filter
 
-A tiny Windows applet that shifts your monitor's white point to match a chosen star. Pick a spectral class (with dwarf/giant subtype) or a named preset star; the display emits light "as if" from that star's photosphere. Layer on optional blue-light reduction. Hit **Reset** to restore whatever gamma ramp Windows had when the app opened.
+A tiny Windows applet that shifts your monitor's white point to match a chosen star. Pick a spectral class (with dwarf/giant subtype) or a named preset star; the display emits light "as if" from that star's photosphere. Hit **Reset** to restore whatever gamma ramp Windows had when the app opened.
 
 ## Presets
 
@@ -79,7 +79,7 @@ Tests cover the pure-math module (`spectrum.py`) and run on any OS. The Win32 ga
 ## How it works
 
 - On launch, the app captures the current Windows gamma ramp via `GetDeviceGammaRamp`.
-- Choosing a star or moving a slider computes RGB scale factors from the target color temperature (Tanner Helland's blackbody approximation), normalizes them so the largest channel stays at 1.0 (we never boost, only attenuate), applies optional blue-light reduction, and pushes a new ramp via `SetDeviceGammaRamp`.
+- Choosing a star or moving the temperature slider computes RGB scale factors from the target color temperature (Tanner Helland's blackbody approximation), normalizes them so the largest channel stays at 1.0 (we never boost, only attenuate), and pushes a new ramp via `SetDeviceGammaRamp`.
 - On any exit path — closing the window, Ctrl-C, an unhandled exception, or process shutdown — the original ramp is restored.
 
 ## Won't work on
