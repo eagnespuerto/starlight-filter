@@ -1,6 +1,6 @@
 [project]
 name = "starlight-filter"
-version = "0.1.0"
+version = "0.2.1"
 description = "Windows applet that shifts the display white point to match a chosen star."
 readme = "README.md"
 requires-python = ">=3.10"

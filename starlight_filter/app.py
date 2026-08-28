@@ -12,7 +12,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox, ttk
 
-from starlight_filter import autostart, gamma, single_instance, spectrum
+from starlight_filter import autostart, gamma, settings, single_instance, spectrum
 
 APP_ID = "eagnespuerto.StarlightFilter"
 
@@ -34,6 +34,8 @@ from starlight_filter.spectrum import (
 
 SUN_TEFF = 5778
 APPLY_INTERVAL_MS = 33  # ~30 Hz cap for live drags
+KEEP_ALIVE_MS = 2000    # re-apply ramp so wake/lock resets don't strand us
+SAVE_DEBOUNCE_MS = 500  # coalesce bursts of slider drags into one write
 
 
 class StarlightFilterApp:
@@ -50,6 +52,8 @@ class StarlightFilterApp:
                 pass
 
         self._pending_apply: str | None = None
+        self._pending_save: str | None = None
+        self._keep_alive_task: str | None = None
         self._selected_preset: Preset | None = None
         self._tray_icon = None  # populated by start_tray() if available
 
@@ -61,7 +65,8 @@ class StarlightFilterApp:
             self._enter_degraded_mode()
             return
 
-        self._select_preset(self._find_preset("G", "V"))
+        self._restore_state_or_default_to_sun()
+        self._schedule_keep_alive()
 
     # --- UI construction --------------------------------------------------
 
@@ -259,10 +264,58 @@ class StarlightFilterApp:
             self.root.after_cancel(self._pending_apply)
             self._pending_apply = None
         kelvin = self._temp_var.get()
-        blue_amount = self._blue_var.get() / 100.0
+        blue_pct = self._blue_var.get()
         rgb = spectrum.rgb_scale_for_temperature(kelvin)
-        rgb = spectrum.apply_blue_reduction(rgb, blue_amount)
+        rgb = spectrum.apply_blue_reduction(rgb, blue_pct / 100.0)
         gamma.apply(rgb)
+        self._schedule_save(kelvin, blue_pct)
+
+    def _schedule_save(self, kelvin: float, blue_pct: float) -> None:
+        if self._pending_save is not None:
+            self.root.after_cancel(self._pending_save)
+        self._pending_save = self.root.after(
+            SAVE_DEBOUNCE_MS, lambda: settings.save(kelvin, blue_pct)
+        )
+
+    def _restore_state_or_default_to_sun(self) -> None:
+        loaded = settings.load()
+        if loaded is None:
+            self._select_preset(self._find_preset("G", "V"))
+            return
+        temp_k, blue_pct = loaded
+        # Guard against a hand-edited or stale state file.
+        temp_k = max(MIN_KELVIN, min(MAX_KELVIN, temp_k))
+        blue_pct = max(0.0, min(100.0, blue_pct))
+        self._temp_var.set(temp_k)
+        self._temp_value_label.config(text=f"{int(temp_k)} K")
+        self._blue_var.set(blue_pct)
+        self._blue_value_label.config(text=f"{int(blue_pct)} %")
+        # Match a named-star / preset if the temperature lines up exactly.
+        matched = next(
+            (p for p in (*PRESETS, *NAMED_STARS) if p.teff_k == int(temp_k)),
+            None,
+        )
+        if matched is not None:
+            self._select_preset(matched)
+        else:
+            self._named_var.set("")
+            self._apply_now()
+
+    def _schedule_keep_alive(self) -> None:
+        # Windows resets the gamma ramp across sleep/wake and lock/unlock.
+        # A cheap idempotent re-apply every few seconds keeps our tint stuck.
+        self._keep_alive_task = self.root.after(
+            KEEP_ALIVE_MS, self._tick_keep_alive
+        )
+
+    def _tick_keep_alive(self) -> None:
+        if gamma.is_supported():
+            kelvin = self._temp_var.get()
+            blue_pct = self._blue_var.get()
+            rgb = spectrum.rgb_scale_for_temperature(kelvin)
+            rgb = spectrum.apply_blue_reduction(rgb, blue_pct / 100.0)
+            gamma.apply(rgb)
+        self._schedule_keep_alive()
 
     def _on_autostart_toggle(self) -> None:
         wanted = bool(self._autostart_var.get())
@@ -271,6 +324,12 @@ class StarlightFilterApp:
         actual = autostart.is_enabled()
         if not ok or actual != wanted:
             self._autostart_var.set(actual)
+        # Push the checkmark change into the tray menu immediately.
+        if self._tray_icon is not None:
+            try:
+                self._tray_icon.update_menu()
+            except Exception:
+                pass
 
     # --- Tray, shutdown, degraded mode -----------------------------------
 
