@@ -7,11 +7,15 @@ import math
 import pytest
 
 from starlight_filter.spectrum import (
+    ATMOSPHERES,
+    DEFAULT_ATMOSPHERE,
     MAX_KELVIN,
     MIN_KELVIN,
     NAMED_STARS,
     PRESETS,
     REFERENCE_KELVIN,
+    atmosphere_transmission,
+    get_atmosphere,
     rgb_scale_for_temperature,
 )
 
@@ -127,3 +131,57 @@ def test_cool_class_dwarfs_reduce_blue(class_letter):
     _, _, b = rgb_scale_for_temperature(dwarf.teff_k)
     _, _, b_ref = rgb_scale_for_temperature(REFERENCE_KELVIN)
     assert b < b_ref
+
+
+def test_atmosphere_off_is_identity():
+    # "off" must be a strict identity so bare-photosphere output is unaffected.
+    for lam in (380, 500, 700, 780):
+        assert atmosphere_transmission("off", lam) == 1.0
+    off = rgb_scale_for_temperature(REFERENCE_KELVIN, "off")
+    default = rgb_scale_for_temperature(REFERENCE_KELVIN)
+    assert off == default
+
+
+def test_atmospheres_have_default_and_unique_keys():
+    keys = [a.key for a in ATMOSPHERES]
+    assert len(keys) == len(set(keys)), "duplicate atmosphere key"
+    assert DEFAULT_ATMOSPHERE in keys
+
+
+def test_get_atmosphere_falls_back_for_unknown():
+    fallback = get_atmosphere("does-not-exist")
+    assert fallback.key == DEFAULT_ATMOSPHERE
+    # None also lands on the default rather than crashing.
+    assert get_atmosphere(None).key == DEFAULT_ATMOSPHERE
+
+
+def test_transmission_stays_in_unit_interval_everywhere():
+    for atmo in ATMOSPHERES:
+        for lam in range(380, 781, 10):
+            t = atmosphere_transmission(atmo.key, lam)
+            assert 0.0 <= t <= 1.0, f"{atmo.key} at {lam} nm: {t}"
+
+
+def test_earth_sunset_reddens_the_sun():
+    # A sunset atmosphere must strip blue more aggressively than clear sky.
+    r_clear, g_clear, b_clear = rgb_scale_for_temperature(5778, "earth")
+    r_set, g_set, b_set = rgb_scale_for_temperature(5778, "earth_sunset")
+    assert b_set < b_clear
+    # Red should end up dominant (normalization pushes it to 1.0).
+    assert r_set >= g_set >= b_set
+
+
+def test_neptune_methane_kills_red_leaves_blue():
+    # Methane absorption should leave blue as the dominant channel.
+    r, g, b = rgb_scale_for_temperature(5778, "neptune")
+    assert b >= g > r
+
+
+def test_every_atmosphere_produces_valid_rgb_across_range():
+    for atmo in ATMOSPHERES:
+        for k in (1500, 3000, 5778, 10000, 30000):
+            r, g, b = rgb_scale_for_temperature(k, atmo.key)
+            assert _in_unit(r) and _in_unit(g) and _in_unit(b)
+            # Normalization contract: at least one channel is at max unless
+            # the atmosphere is opaque (none of ours are).
+            assert max(r, g, b) > 0.99

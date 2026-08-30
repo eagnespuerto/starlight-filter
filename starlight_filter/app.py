@@ -25,6 +25,8 @@ def _icon_path() -> Path | None:
         candidate = Path(__file__).resolve().parent.parent / "assets" / "icon.ico"
     return candidate if candidate.exists() else None
 from starlight_filter.spectrum import (
+    ATMOSPHERES,
+    DEFAULT_ATMOSPHERE,
     MAX_KELVIN,
     MIN_KELVIN,
     NAMED_STARS,
@@ -55,6 +57,7 @@ class StarlightFilterApp:
         self._pending_save: str | None = None
         self._keep_alive_task: str | None = None
         self._selected_preset: Preset | None = None
+        self._atmosphere_key: str = DEFAULT_ATMOSPHERE
         self._tray_icon = None  # populated by start_tray() if available
 
         self._build_ui()
@@ -165,6 +168,39 @@ class StarlightFilterApp:
         )
         self._temp_warning_label.grid(row=3, column=0, sticky="ew", pady=(2, 0))
 
+        # Atmospheric scattering dropdown — modulates the photospheric color
+        # by a per-wavelength transmission spectrum before the CIE integral,
+        # so cool/absorbing atmospheres tint the display accordingly.
+        atmo_frame = ttk.LabelFrame(outer, text="Atmospheric scattering")
+        atmo_frame.grid(row=3, column=0, sticky="ew", **pad)
+        atmo_frame.columnconfigure(0, weight=1)
+
+        self._atmosphere_options = [a.name for a in ATMOSPHERES]
+        self._atmosphere_var = tk.StringVar(
+            value=self._atmosphere_name_for_key(self._atmosphere_key)
+        )
+        self._atmosphere_combo = ttk.Combobox(
+            atmo_frame,
+            textvariable=self._atmosphere_var,
+            values=self._atmosphere_options,
+            state="readonly",
+            width=44,
+        )
+        self._atmosphere_combo.grid(row=0, column=0, padx=8, pady=(6, 2), sticky="ew")
+        self._atmosphere_combo.bind(
+            "<<ComboboxSelected>>", self._on_atmosphere_selected
+        )
+
+        self._atmosphere_desc_var = tk.StringVar(value="")
+        ttk.Label(
+            atmo_frame,
+            textvariable=self._atmosphere_desc_var,
+            foreground="#555",
+            wraplength=360,
+            justify="left",
+        ).grid(row=1, column=0, padx=8, pady=(0, 6), sticky="ew")
+        self._update_atmosphere_description()
+
         # Bottom row: autostart checkbox on the left, actions on the right.
         bottom = ttk.Frame(outer)
         bottom.grid(row=4, column=0, sticky="ew", **pad)
@@ -191,6 +227,7 @@ class StarlightFilterApp:
             + [
                 self._named_combo,
                 self._temp_scale,
+                self._atmosphere_combo,
                 self._reset_btn,
                 self._apply_btn,
                 self._autostart_check,
@@ -240,10 +277,33 @@ class StarlightFilterApp:
         star = NAMED_STARS[idx]
         self._select_preset(star)
 
+    def _on_atmosphere_selected(self, _event=None) -> None:
+        idx = self._atmosphere_combo.current()
+        if idx < 0:
+            return
+        self._atmosphere_key = ATMOSPHERES[idx].key
+        self._update_atmosphere_description()
+        self._apply_now()
+
+    def _update_atmosphere_description(self) -> None:
+        atmo = next(
+            (a for a in ATMOSPHERES if a.key == self._atmosphere_key), ATMOSPHERES[0]
+        )
+        self._atmosphere_desc_var.set(atmo.description)
+
+    def _atmosphere_name_for_key(self, key: str) -> str:
+        for a in ATMOSPHERES:
+            if a.key == key:
+                return a.name
+        return ATMOSPHERES[0].name
+
     def _on_reset(self) -> None:
         gamma.restore()
         self._temp_var.set(SUN_TEFF)
         self._temp_value_label.config(text=f"{SUN_TEFF} K")
+        self._atmosphere_key = DEFAULT_ATMOSPHERE
+        self._atmosphere_var.set(self._atmosphere_name_for_key(self._atmosphere_key))
+        self._update_atmosphere_description()
         self._select_preset(self._find_preset("G", "V"))
 
     def _select_preset(self, preset: Preset) -> None:
@@ -270,15 +330,17 @@ class StarlightFilterApp:
             self.root.after_cancel(self._pending_apply)
             self._pending_apply = None
         kelvin = self._temp_var.get()
-        rgb = spectrum.rgb_scale_for_temperature(kelvin)
+        rgb = spectrum.rgb_scale_for_temperature(kelvin, self._atmosphere_key)
         gamma.apply(rgb)
         self._schedule_save(kelvin)
 
     def _schedule_save(self, kelvin: float) -> None:
         if self._pending_save is not None:
             self.root.after_cancel(self._pending_save)
+        atmosphere_key = self._atmosphere_key
         self._pending_save = self.root.after(
-            SAVE_DEBOUNCE_MS, lambda: settings.save(kelvin)
+            SAVE_DEBOUNCE_MS,
+            lambda: settings.save(kelvin, atmosphere_key),
         )
 
     def _restore_state_or_default_to_sun(self) -> None:
@@ -286,9 +348,12 @@ class StarlightFilterApp:
         if loaded is None:
             self._select_preset(self._find_preset("G", "V"))
             return
-        temp_k = loaded
         # Guard against a hand-edited or stale state file.
-        temp_k = max(MIN_KELVIN, min(MAX_KELVIN, temp_k))
+        temp_k = max(MIN_KELVIN, min(MAX_KELVIN, loaded.temperature_k))
+        atmo = spectrum.get_atmosphere(loaded.atmosphere_key)
+        self._atmosphere_key = atmo.key
+        self._atmosphere_var.set(self._atmosphere_name_for_key(self._atmosphere_key))
+        self._update_atmosphere_description()
         self._temp_var.set(temp_k)
         self._temp_value_label.config(text=f"{int(temp_k)} K")
         self._update_temp_warning()
@@ -313,7 +378,7 @@ class StarlightFilterApp:
     def _tick_keep_alive(self) -> None:
         if gamma.is_supported():
             kelvin = self._temp_var.get()
-            rgb = spectrum.rgb_scale_for_temperature(kelvin)
+            rgb = spectrum.rgb_scale_for_temperature(kelvin, self._atmosphere_key)
             gamma.apply(rgb)
         self._schedule_keep_alive()
 

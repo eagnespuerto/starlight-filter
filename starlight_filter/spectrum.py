@@ -18,6 +18,10 @@ REFERENCE_KELVIN = 6500.0
 MIN_KELVIN = 1000.0
 MAX_KELVIN = 50000.0
 
+# Key of the default (no-scattering) atmosphere. UI and settings both fall back
+# to this when nothing is selected.
+DEFAULT_ATMOSPHERE = "off"
+
 
 @dataclass(frozen=True)
 class Preset:
@@ -83,6 +87,197 @@ NAMED_STARS: list[Preset] = [
     Preset("L",  "V",  "Luhman 16 A",                 "",  1310, "L7.5 brown dwarf, closer half of the third-closest system."),
     Preset("T",  "V",  "Luhman 16 B",                 "",  1210, "T0.5 brown dwarf; L/T transition companion of Luhman 16 A."),
 ]
+
+
+@dataclass(frozen=True)
+class Atmosphere:
+    """An atmospheric transmission profile applied on top of the photosphere.
+
+    Transmission is a per-wavelength attenuation of direct beam light reaching
+    an observer standing under the atmosphere, so cooler / more absorbing
+    atmospheres tint the star before the CIE integral runs. "off" is the
+    identity (bare photosphere).
+    """
+
+    key: str
+    name: str
+    short: str
+    description: str
+
+
+ATMOSPHERES: list[Atmosphere] = [
+    Atmosphere(
+        "off",
+        "Off (bare photosphere)",
+        "None",
+        "No atmosphere — display the star's raw blackbody color.",
+    ),
+    Atmosphere(
+        "earth",
+        "Earth-like (clear zenith)",
+        "Earth",
+        "N₂/O₂ Rayleigh scattering. Direct beam mildly yellowed as blue "
+        "scatters into the sky.",
+    ),
+    Atmosphere(
+        "earth_sunset",
+        "Earth-like (horizon / sunset)",
+        "Sunset",
+        "Same Rayleigh model at a large air mass — long path length strips "
+        "the blue/green out, leaving a deep orange-red disk.",
+    ),
+    Atmosphere(
+        "mars",
+        "Mars-like (dusty CO₂)",
+        "Mars",
+        "Suspended iron-oxide dust absorbs blue/green and forward-scatters "
+        "the red. The Sun looks butterscotch and the sky pinkish.",
+    ),
+    Atmosphere(
+        "venus",
+        "Venus-like (thick CO₂ + H₂SO₄)",
+        "Venus",
+        "Sulfuric acid cloud deck plus dense CO₂ — nearly opaque in UV/blue, "
+        "leaves a dim orange-yellow disk at the surface.",
+    ),
+    Atmosphere(
+        "titan",
+        "Titan-like (methane + tholin haze)",
+        "Titan",
+        "Photochemical tholin haze absorbs almost all blue; the Sun through "
+        "it is a small dim orange smear.",
+    ),
+    Atmosphere(
+        "neptune",
+        "Neptune-like (methane-rich)",
+        "Neptune",
+        "Methane absorbs strongly in the red, transmits blue-green — a star "
+        "seen through it takes on a cool cyan cast.",
+    ),
+    Atmosphere(
+        "thin",
+        "Theoretical: thin Rayleigh",
+        "Thin",
+        "Idealized clear atmosphere at ~1/4 of Earth's optical depth. "
+        "Almost identical to no atmosphere.",
+    ),
+    Atmosphere(
+        "thick",
+        "Theoretical: thick Rayleigh",
+        "Thick",
+        "Idealized deep Rayleigh atmosphere (~8× Earth). Strong blue loss, "
+        "warm-tinted disk even at zenith.",
+    ),
+]
+
+
+_ATMOSPHERE_BY_KEY: dict[str, Atmosphere] = {a.key: a for a in ATMOSPHERES}
+
+
+def get_atmosphere(key: str | None) -> Atmosphere:
+    """Look up an atmosphere by key, falling back to the bare photosphere."""
+    if key is None:
+        return _ATMOSPHERE_BY_KEY[DEFAULT_ATMOSPHERE]
+    return _ATMOSPHERE_BY_KEY.get(key, _ATMOSPHERE_BY_KEY[DEFAULT_ATMOSPHERE])
+
+
+def _rayleigh_transmission(lam_nm: float, tau_550: float) -> float:
+    """Beer's law transmission for a Rayleigh atmosphere anchored at 550 nm.
+
+    Rayleigh optical depth scales as (λ₀/λ)^4, so blue light is attenuated far
+    more than red — the same physics that reddens the sunset.
+    """
+    tau = tau_550 * (550.0 / lam_nm) ** 4
+    if tau > 700.0:
+        return 0.0
+    return math.exp(-tau)
+
+
+def _piecewise(lam_nm: float, breakpoints: tuple[tuple[float, float], ...]) -> float:
+    """Piecewise-constant transmission — first (lam_max, value) that fits wins."""
+    for lam_max, value in breakpoints:
+        if lam_nm < lam_max:
+            return value
+    return breakpoints[-1][1]
+
+
+def atmosphere_transmission(atmosphere_key: str, lam_nm: float) -> float:
+    """Fraction of direct-beam light at wavelength ``lam_nm`` that survives.
+
+    Returned value is in [0, 1]. Models are deliberately simple — enough to
+    reproduce each world's characteristic tint without pretending to be a
+    radiative-transfer code.
+    """
+    key = atmosphere_key or DEFAULT_ATMOSPHERE
+    if key == "off":
+        return 1.0
+    if key == "earth":
+        return _rayleigh_transmission(lam_nm, 0.12)
+    if key == "earth_sunset":
+        # ~38 air masses of Rayleigh at horizon plus a mild broadband
+        # aerosol floor so the disk doesn't go completely black in the blue.
+        return _rayleigh_transmission(lam_nm, 1.4) * 0.65
+    if key == "mars":
+        # Iron-oxide dust: broadly rising transmission from blue to red.
+        return _piecewise(
+            lam_nm,
+            (
+                (450.0, 0.18),
+                (500.0, 0.32),
+                (550.0, 0.48),
+                (600.0, 0.68),
+                (650.0, 0.82),
+                (700.0, 0.90),
+                (10_000.0, 0.92),
+            ),
+        )
+    if key == "venus":
+        # Cloud deck kills UV/blue almost entirely; SO₂/CO₂ leaves an orange
+        # window in the red.
+        return _piecewise(
+            lam_nm,
+            (
+                (420.0, 0.01),
+                (460.0, 0.05),
+                (500.0, 0.15),
+                (550.0, 0.40),
+                (600.0, 0.65),
+                (650.0, 0.80),
+                (10_000.0, 0.85),
+            ),
+        )
+    if key == "titan":
+        # Tholin haze: near-opaque in blue, orange in the middle, brighter red.
+        return _piecewise(
+            lam_nm,
+            (
+                (450.0, 0.01),
+                (500.0, 0.05),
+                (550.0, 0.20),
+                (600.0, 0.45),
+                (650.0, 0.70),
+                (10_000.0, 0.80),
+            ),
+        )
+    if key == "neptune":
+        # Methane absorption bands: ~620, 720, 790 nm strong. Keep blue-cyan.
+        return _piecewise(
+            lam_nm,
+            (
+                (450.0, 0.85),
+                (500.0, 0.85),
+                (550.0, 0.75),
+                (600.0, 0.55),
+                (650.0, 0.20),
+                (700.0, 0.08),
+                (10_000.0, 0.05),
+            ),
+        )
+    if key == "thin":
+        return _rayleigh_transmission(lam_nm, 0.03)
+    if key == "thick":
+        return _rayleigh_transmission(lam_nm, 1.0)
+    return 1.0
 
 
 # CIE 1931 2° standard observer color matching functions, 10 nm sampling from
@@ -151,23 +346,29 @@ def _planck_relative_radiance(lam_nm: float, kelvin: float) -> float:
     return 1.0 / ((lam_nm ** 5) * (math.exp(exponent) - 1.0))
 
 
-def temperature_to_xyz(kelvin: float) -> tuple[float, float, float]:
-    """Integrate Planck × CIE 1931 CMF to get CIE XYZ tristimulus values."""
+def temperature_to_xyz(
+    kelvin: float, atmosphere_key: str = DEFAULT_ATMOSPHERE
+) -> tuple[float, float, float]:
+    """Integrate Planck × atmosphere × CIE 1931 CMF to get CIE XYZ."""
     kelvin = max(MIN_KELVIN, min(MAX_KELVIN, kelvin))
     x_sum = 0.0
     y_sum = 0.0
     z_sum = 0.0
     for lam, xb, yb, zb in _CIE_1931_2DEG_CMF:
-        b = _planck_relative_radiance(lam, kelvin)
+        b = _planck_relative_radiance(lam, kelvin) * atmosphere_transmission(
+            atmosphere_key, lam
+        )
         x_sum += b * xb
         y_sum += b * yb
         z_sum += b * zb
     return x_sum, y_sum, z_sum
 
 
-def chromaticity_xy(kelvin: float) -> tuple[float, float]:
-    """CIE 1931 (x, y) chromaticity coordinates on the Planckian locus."""
-    x, y, z = temperature_to_xyz(kelvin)
+def chromaticity_xy(
+    kelvin: float, atmosphere_key: str = DEFAULT_ATMOSPHERE
+) -> tuple[float, float]:
+    """CIE 1931 (x, y) chromaticity — Planckian locus when atmosphere is 'off'."""
+    x, y, z = temperature_to_xyz(kelvin, atmosphere_key)
     s = x + y + z
     if s <= 0.0:
         return 0.0, 0.0
@@ -191,14 +392,17 @@ def _srgb_encode(v: float) -> float:
     return 1.055 * (v ** (1.0 / 2.4)) - 0.055
 
 
-def rgb_scale_for_temperature(kelvin: float) -> tuple[float, float, float]:
+def rgb_scale_for_temperature(
+    kelvin: float, atmosphere_key: str = DEFAULT_ATMOSPHERE
+) -> tuple[float, float, float]:
     """Convert a target color temperature to (r, g, b) gamma-ramp scale factors.
 
-    Path: Planck's Law → CIE 1931 XYZ → sRGB (D65) matrix → sRGB gamma.
-    Normalized so the largest channel is 1.0 — we never boost, only attenuate.
-    At the reference 6500 K this returns approximately (1.0, 1.0, 1.0).
+    Path: Planck's Law × atmospheric transmission → CIE 1931 XYZ → sRGB (D65)
+    matrix → sRGB gamma. Normalized so the largest channel is 1.0 — the gamma
+    ramp can only attenuate, never boost.
+    At the reference 6500 K with atmosphere "off" this returns ≈(1.0, 1.0, 1.0).
     """
-    x, y, z = temperature_to_xyz(kelvin)
+    x, y, z = temperature_to_xyz(kelvin, atmosphere_key)
     s = x + y + z
     if s <= 0.0:
         return 0.0, 0.0, 0.0
