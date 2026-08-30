@@ -30,6 +30,24 @@ A separate **More named stars** dropdown holds 28 additional stars sorted hot-to
 
 The temperature slider spans 1,000 K – 50,000 K to cover the full range from the coolest brown dwarfs to Wolf-Rayet stars. A short warning line appears under the slider at either extreme — flagging cool values Windows will clamp without the registry unlock, and hot values that produce a hard-to-read blue tint.
 
+## Atmospheric scattering
+
+An **Atmospheric scattering** dropdown lets you view the chosen star as it would appear from under a real (or theoretical) atmosphere. The atmosphere's per-wavelength transmission is folded into the Planck × CIE integral before the sRGB conversion, so the tint comes out of physics rather than a lookup:
+
+| Option | Model |
+|--------|-------|
+| **Off (bare photosphere)** | Identity — the star's raw blackbody color. |
+| **Earth-like (clear zenith)** | N₂/O₂ Rayleigh at typical zenith optical depth (τ₅₅₀ ≈ 0.12). |
+| **Earth-like (horizon / sunset)** | Same Rayleigh model at a large air mass — strong red cast. |
+| **Mars-like (dusty CO₂)** | Iron-oxide dust absorption rising from blue to red — butterscotch. |
+| **Venus-like (thick CO₂ + H₂SO₄)** | Sulfuric acid clouds kill UV/blue; dim orange-yellow disk. |
+| **Titan-like (methane + tholin haze)** | Photochemical haze — near-opaque in blue, dim orange. |
+| **Neptune-like (methane-rich)** | Methane absorption bands in the red — cool cyan cast. |
+| **Theoretical: thin Rayleigh** | Idealized clear atmosphere at ~1/4 of Earth's optical depth. |
+| **Theoretical: thick Rayleigh** | Deep Rayleigh atmosphere (~8× Earth) — warm tint at zenith. |
+
+Because the gamma ramp can only attenuate, the app always normalizes so at least one channel is at 1.0 — heavy atmospheres change the *tint* on your monitor, not its brightness.
+
 ## Run from source
 
 ```bash
@@ -79,7 +97,7 @@ Tests cover the pure-math module (`spectrum.py`) and run on any OS. The Win32 ga
 ## How it works
 
 - On launch, the app captures the current Windows gamma ramp via `GetDeviceGammaRamp`.
-- Choosing a star or moving the temperature slider computes RGB scale factors from the target color temperature by integrating Planck's Law against the CIE 1931 2° standard-observer color matching functions to get CIE XYZ, then converting to sRGB with the standard D65 primaries matrix and the sRGB transfer function. The result is normalized so the largest channel stays at 1.0 (we never boost, only attenuate) and pushed as a new ramp via `SetDeviceGammaRamp`. Every temperature therefore sits on the Planckian locus; at 6500 K the chromaticity is (0.314, 0.324), i.e. daylight D65.
+- Choosing a star or moving the temperature slider computes RGB scale factors from the target color temperature by integrating Planck's Law — optionally multiplied by the selected atmosphere's transmission spectrum — against the CIE 1931 2° standard-observer color matching functions to get CIE XYZ, then converting to sRGB with the standard D65 primaries matrix and the sRGB transfer function. The result is normalized so the largest channel stays at 1.0 (we never boost, only attenuate) and pushed as a new ramp via `SetDeviceGammaRamp`. With atmosphere "Off", every temperature sits on the Planckian locus; at 6500 K the chromaticity is (0.314, 0.324), i.e. daylight D65.
 - On any exit path — closing the window, Ctrl-C, an unhandled exception, or process shutdown — the original ramp is restored.
 
 ## Won't work on
