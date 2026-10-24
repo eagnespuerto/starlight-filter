@@ -1,5 +1,11 @@
 # Starlight Filter
 
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![release](https://img.shields.io/github/v/release/eagnespuerto/starlight-filter?include_prereleases&sort=semver)](https://github.com/eagnespuerto/starlight-filter/releases/latest)
+[![made with](https://img.shields.io/badge/made%20with-Python-3776AB?logo=python&logoColor=white)](https://github.com/eagnespuerto/starlight-filter)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support%20me-FF5E5B?logo=kofi&logoColor=white)](https://ko-fi.com/eagnespuerto)
+[![Linktree](https://img.shields.io/badge/Linktree-soitsagnes-43E55E?logo=linktree&logoColor=white)](https://linktr.ee/soitsagnes)
+
 A tiny Windows applet that shifts your monitor's white point to match a chosen star. Pick a spectral class (with dwarf/giant subtype) or a named preset star; the display emits light "as if" from that star's photosphere. Hit **Reset** to restore whatever gamma ramp Windows had when the app opened.
 
 ## Presets
