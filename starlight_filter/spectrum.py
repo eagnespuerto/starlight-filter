@@ -41,7 +41,7 @@ PRESETS: list[Preset] = [
     Preset("F", "V", "Procyon",           "Pro",   6530, "F5 IV-V."),
     Preset("G", "V", "Sun",               "Sun",   5778, "G2 V — default at launch."),
     Preset("K", "V", "Epsilon Eridani",   "εEri",  5080, "K2 V."),
-    Preset("M", "V", "Proxima Centauri",  "Prox",  3040, "M5.5 Ve — nearest star."),
+    Preset("M", "V", "Proxima Centauri",  "Prox",  2833, "M5.5 Ve — nearest star. Teff from Anugu et al. 2026 (arXiv:2610.33373)."),
     # Giants (luminosity class III)
     Preset("O", "III", "Meissa",          "Mei",  35000, "λ Orionis A, O8 III."),
     Preset("B", "III", "Bellatrix",       "Bel",  22000, "γ Orionis, B2 III."),
